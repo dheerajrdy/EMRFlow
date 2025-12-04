@@ -4,7 +4,6 @@
 
 ## Project Status
 
-🚀 **~70% Complete** - Core functionality working, ready for demo polish
 
 ### ✅ Working
 - Multi-agent architecture with specialized AI agents
@@ -188,13 +187,6 @@ python scripts/test_full_conversation.py
 python scripts/test_natural_responses.py
 ```
 
-## Documentation
-
-- **[CLAUDE.md](./CLAUDE.md)** - Complete development guide, implementation plan, and coding guidelines
-- **[docs/design/design_doc.md](./docs/design/design_doc.md)** - Full PRD and technical architecture
-- **[docs/reports/PROGRESS_REPORT.md](./docs/reports/PROGRESS_REPORT.md)** - Current status and progress
-- **[docs/setup/SETUP.md](./docs/setup/SETUP.md)** - Detailed setup instructions
-
 ## Technology Stack
 
 - **Language**: Python 3.9+
@@ -222,26 +214,6 @@ TWILIO_PHONE_NUMBER=your-twilio-number
 DEMO_MODE=true  # Enables lenient authentication for testing
 PORT=5000       # Flask server port
 ```
-
-## Hackathon Context
-
-**Challenge**: Heidi Health hackathon - Novel applications of voice agents in healthcare
-
-**Goal**: Demonstrate multi-agent AI proficiency in handling patient phone calls
-
-**Key Differentiators**:
-- Natural, empathetic conversation style
-- Multi-agent architecture with clear separation of concerns
-- Safe handling of PHI with authentication
-- Graceful error handling and fallback to human assistance
-
-## Contributing
-
-This is a hackathon project. For development guidelines, see [CLAUDE.md](./CLAUDE.md).
-
-## License
-
-[Your License Here]
 
 ---
 
