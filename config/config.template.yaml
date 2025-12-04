@@ -1,0 +1,57 @@
+# EMRFlow Configuration Template
+# Copy this to config.yaml and fill in your values
+
+# Google Cloud / Model Configuration
+model:
+  provider: "google"  # Using Google Cloud Agent Development Kit
+  model_name: "gemini-1.5-pro"  # or gemini-1.5-flash for faster/cheaper
+  temperature: 0.7
+  max_tokens: 2048
+  project_id_env: "GOOGLE_CLOUD_PROJECT"  # Environment variable name
+
+# Workflow Configuration
+workflow:
+  max_retries: 2
+  timeout_seconds: 300
+  enable_dry_run: true  # Default to safe mode
+
+# Logging & Observability
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"  # json or text
+  log_phi: false  # NEVER set to true in production
+  output_dir: "runs"
+
+# Healthcare-specific Configuration
+# [To be defined based on use case]
+healthcare:
+  # Example: EMR integration
+  # emr:
+  #   base_url: "https://your-emr-system.com"
+  #   api_key_env: "EMR_API_KEY"
+  #   timeout: 30
+
+  # Example: FHIR server
+  # fhir:
+  #   base_url: "https://your-fhir-server.com"
+  #   version: "R4"
+  #   auth_env: "FHIR_AUTH_TOKEN"
+
+  # PHI handling
+  phi_protection:
+    enabled: true
+    anonymize_logs: true
+    encryption_required: true
+
+# Storage Configuration
+storage:
+  type: "jsonl"  # jsonl or sqlite
+  path: "runs"
+  retention_days: 90
+
+# Agent-specific Configuration
+agents:
+  # [To be defined based on agents needed]
+  # example_agent:
+  #   max_iterations: 3
+  #   temperature: 0.5

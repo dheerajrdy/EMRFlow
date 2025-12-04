@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# Logs
+*.log
+logs/
+
+# Run metadata (may contain sensitive data)
+runs/*.jsonl
+runs/*.db
+runs/*.txt
+
+# Config (may contain secrets)
+config/*.yaml
+config/*.yml
+!config/config.template.yaml
+
+# Healthcare/PHI data (NEVER commit)
+*.phi
+*_phi.*
+patient_data/
+emr_data/
+phi/
+
+# API keys and credentials
+credentials.json
+service-account*.json
+*_credentials.*

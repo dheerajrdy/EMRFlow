@@ -1,0 +1,246 @@
+{
+  "patients": [
+    {
+      "id": "P-1001",
+      "name": "Alicia Thompson",
+      "dob": "1985-04-12",
+      "contact": {
+        "phone": "+1-415-555-0142",
+        "email": "alicia.thompson@example.com"
+      },
+      "appointments": [
+        {
+          "appointment_id": "A-501",
+          "slot_id": "S-200-1",
+          "doctor_id": "D-200",
+          "doctor": "Dr. Maya Singh",
+          "type": "follow-up",
+          "datetime": "2025-12-15T10:00:00",
+          "location": "Clinic - Room 3",
+          "status": "scheduled",
+          "reason": "Blood pressure follow-up"
+        },
+        {
+          "appointment_id": "A-401",
+          "slot_id": null,
+          "doctor_id": "D-200",
+          "doctor": "Dr. Maya Singh",
+          "type": "annual physical",
+          "datetime": "2024-10-18T09:00:00",
+          "location": "Clinic - Room 2",
+          "status": "completed",
+          "reason": "Routine check-up"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Lisinopril",
+          "dosage": "10 mg",
+          "frequency": "once daily",
+          "start_date": "2025-01-12",
+          "instructions": "Take in the morning; monitor blood pressure weekly"
+        },
+        {
+          "name": "Vitamin D3",
+          "dosage": "1000 IU",
+          "frequency": "once daily",
+          "start_date": "2024-09-01",
+          "instructions": "Take with food"
+        }
+      ],
+      "lab_results": [
+        {
+          "test_name": "Lipid Panel",
+          "date": "2025-04-28",
+          "values": {
+            "total_cholesterol": "220 mg/dL",
+            "ldl": "140 mg/dL",
+            "hdl": "48 mg/dL",
+            "triglycerides": "180 mg/dL"
+          },
+          "interpretation": "LDL slightly elevated; recommend diet and exercise changes"
+        },
+        {
+          "test_name": "Basic Metabolic Panel",
+          "date": "2025-02-14",
+          "values": {
+            "glucose": "102 mg/dL",
+            "creatinine": "0.9 mg/dL",
+            "eGFR": "95 mL/min/1.73m2"
+          },
+          "interpretation": "All values within acceptable range"
+        }
+      ],
+      "visit_notes": [
+        {
+          "date": "2025-04-28",
+          "provider": "Dr. Maya Singh",
+          "note": "Reviewed lipid panel. Encouraged Mediterranean diet and daily walks; follow-up in 6 weeks."
+        },
+        {
+          "date": "2024-10-18",
+          "provider": "Dr. Maya Singh",
+          "note": "Completed annual physical; recommended routine labs and flu vaccine."
+        }
+      ]
+    },
+    {
+      "id": "P-1002",
+      "name": "Brandon Lee",
+      "dob": "1979-08-22",
+      "contact": {
+        "phone": "+1-510-555-0199",
+        "email": "brandon.lee@example.com"
+      },
+      "appointments": [
+        {
+          "appointment_id": "A-502",
+          "slot_id": "S-210-1",
+          "doctor_id": "D-210",
+          "doctor": "Dr. Daniel Lee",
+          "type": "chronic care follow-up",
+          "datetime": "2025-05-07T09:30:00",
+          "location": "Clinic - Room 1",
+          "status": "scheduled",
+          "reason": "Diabetes management"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Metformin",
+          "dosage": "500 mg",
+          "frequency": "twice daily",
+          "start_date": "2023-06-10",
+          "instructions": "Take with meals; monitor blood glucose"
+        },
+        {
+          "name": "Atorvastatin",
+          "dosage": "20 mg",
+          "frequency": "nightly",
+          "start_date": "2024-03-05",
+          "instructions": "Take at bedtime"
+        }
+      ],
+      "lab_results": [
+        {
+          "test_name": "Hemoglobin A1C",
+          "date": "2025-03-22",
+          "values": {
+            "a1c": "7.1%"
+          },
+          "interpretation": "Slightly above goal; reinforce medication adherence and diet"
+        },
+        {
+          "test_name": "Kidney Function Panel",
+          "date": "2025-03-22",
+          "values": {
+            "creatinine": "1.0 mg/dL",
+            "eGFR": "92 mL/min/1.73m2"
+          },
+          "interpretation": "Kidney function stable"
+        }
+      ],
+      "visit_notes": [
+        {
+          "date": "2025-03-22",
+          "provider": "Dr. Daniel Lee",
+          "note": "Discussed diabetes control; increased exercise recommended; follow-up in 6 weeks."
+        }
+      ]
+    },
+    {
+      "id": "P-1003",
+      "name": "Carmen Diaz",
+      "dob": "1992-12-03",
+      "contact": {
+        "phone": "+1-628-555-0114",
+        "email": "carmen.diaz@example.com"
+      },
+      "appointments": [
+        {
+          "appointment_id": "A-503",
+          "slot_id": "S-220-1",
+          "doctor_id": "D-220",
+          "doctor": "Dr. Priya Patel",
+          "type": "pediatric follow-up",
+          "datetime": "2025-05-08T14:00:00",
+          "location": "Clinic - Room 5",
+          "status": "scheduled",
+          "reason": "Asthma action plan review"
+        }
+      ],
+      "medications": [
+        {
+          "name": "Fluticasone inhaler",
+          "dosage": "110 mcg",
+          "frequency": "two puffs twice daily",
+          "start_date": "2024-11-01",
+          "instructions": "Rinse mouth after use"
+        },
+        {
+          "name": "Albuterol inhaler",
+          "dosage": "90 mcg",
+          "frequency": "as needed",
+          "start_date": "2024-11-01",
+          "instructions": "Use for wheezing or shortness of breath"
+        }
+      ],
+      "lab_results": [
+        {
+          "test_name": "Pulmonary Function Test",
+          "date": "2025-02-10",
+          "values": {
+            "FEV1": "85% predicted",
+            "FVC": "90% predicted"
+          },
+          "interpretation": "Mild obstruction; continue controller inhaler"
+        }
+      ],
+      "visit_notes": [
+        {
+          "date": "2025-02-10",
+          "provider": "Dr. Priya Patel",
+          "note": "Asthma stable; reinforced spacer technique; follow-up in 3 months."
+        }
+      ]
+    },
+    {
+      "id": "P-1004",
+      "name": "Devon Patel",
+      "dob": "2000-01-15",
+      "contact": {
+        "phone": "+1-408-555-0188",
+        "email": "devon.patel@example.com"
+      },
+      "appointments": [],
+      "medications": [
+        {
+          "name": "Cetirizine",
+          "dosage": "10 mg",
+          "frequency": "once daily as needed",
+          "start_date": "2024-04-10",
+          "instructions": "Take for seasonal allergies"
+        }
+      ],
+      "lab_results": [
+        {
+          "test_name": "Complete Blood Count",
+          "date": "2024-12-12",
+          "values": {
+            "wbc": "5.5 x10^9/L",
+            "hemoglobin": "14.1 g/dL",
+            "platelets": "240 x10^9/L"
+          },
+          "interpretation": "All counts within normal limits"
+        }
+      ],
+      "visit_notes": [
+        {
+          "date": "2024-12-12",
+          "provider": "Nurse Practitioner Kelly Wong",
+          "note": "Seasonal allergy visit; provided avoidance tips and antihistamine plan."
+        }
+      ]
+    }
+  ]
+}

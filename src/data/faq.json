@@ -1,0 +1,28 @@
+{
+  "faq": [
+    {
+      "question": "What are the clinic hours?",
+      "answer": "We are open Monday through Friday from 8:00 AM to 6:00 PM and Saturdays from 9:00 AM to 1:00 PM."
+    },
+    {
+      "question": "Where is the clinic located?",
+      "answer": "Our clinic is at 245 Market Street, Suite 500, San Francisco, CA 94105. Parking is available in the attached garage."
+    },
+    {
+      "question": "Which insurance plans do you accept?",
+      "answer": "We accept most major commercial plans including Aetna, Blue Shield, Cigna, and UnitedHealthcare. Please bring your insurance card to your visit."
+    },
+    {
+      "question": "How do I request a prescription refill?",
+      "answer": "You can request refills through the patient portal or by calling the clinic. Refills are processed within 1-2 business days."
+    },
+    {
+      "question": "Do I need a referral to see a specialist?",
+      "answer": "Many specialists can be seen directly, but some insurance plans require a referral. Please check with your insurer or call us for help."
+    },
+    {
+      "question": "What should I do if I need to cancel my appointment?",
+      "answer": "Call the clinic at least 24 hours before your appointment to avoid a late cancellation fee. We can also help you reschedule."
+    }
+  ]
+}
