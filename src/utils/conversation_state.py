@@ -2,11 +2,13 @@
 Conversation state tracking for multi-turn dialogue.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 
 MAX_HISTORY = 20
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,6 +21,13 @@ class ConversationState:
     history: List[Dict[str, str]] = field(default_factory=list)
     step: Optional[str] = None
     registration_data: Dict[str, Any] = field(default_factory=dict)
+    session_id: Optional[str] = None
+
+    # Retry tracking
+    retry_count: int = 0
+    max_retries: int = 2
+    last_failed_intent: Optional[str] = None
+    last_failed_utterance: Optional[str] = None
 
     def add_turn(self, role: str, text: str) -> None:
         """Append a dialogue turn, trimming to max history."""
@@ -50,6 +59,24 @@ class ConversationState:
         """Clear all registration data."""
         self.registration_data = {}
 
+    def increment_retry(self, failed_intent: str, utterance: str) -> None:
+        """Increment retry counter and track failure."""
+        self.retry_count += 1
+        self.last_failed_intent = failed_intent
+        self.last_failed_utterance = utterance
+
+    def reset_retry(self) -> None:
+        """Reset retry counter after successful intent processing."""
+        if self.retry_count > 0:
+            logger.info("Resetting retry counter after %s attempts", self.retry_count)
+            self.retry_count = 0
+            self.last_failed_intent = None
+            self.last_failed_utterance = None
+
+    def is_max_retries_reached(self) -> bool:
+        """Check if max retries exceeded."""
+        return self.retry_count >= self.max_retries
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "current_intent": self.current_intent,
@@ -58,6 +85,11 @@ class ConversationState:
             "history": self.history,
             "step": self.step,
             "registration_data": self.registration_data,
+            "session_id": self.session_id,
+            "retry_count": self.retry_count,
+            "max_retries": self.max_retries,
+            "last_failed_intent": self.last_failed_intent,
+            "last_failed_utterance": self.last_failed_utterance,
         }
 
     @classmethod
@@ -69,4 +101,9 @@ class ConversationState:
             history=data.get("history", []),
             step=data.get("step"),
             registration_data=data.get("registration_data", {}),
+            session_id=data.get("session_id"),
+            retry_count=data.get("retry_count", 0),
+            max_retries=data.get("max_retries", 2),
+            last_failed_intent=data.get("last_failed_intent"),
+            last_failed_utterance=data.get("last_failed_utterance"),
         )

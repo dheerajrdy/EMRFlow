@@ -13,11 +13,13 @@ import re
 import time
 from typing import Any, Dict, Optional, Tuple
 import importlib.metadata as importlib_metadata
+from pathlib import Path
 try:
     from dateutil import parser as date_parser
 except Exception:  # pragma: no cover - optional dependency
     date_parser = None
 from dotenv import load_dotenv
+import yaml
 
 # Load environment variables from .env file
 load_dotenv()
@@ -65,6 +67,9 @@ class MockModelClient(ModelClient):
 def build_dialogue_manager():
     """Construct DialogueManager with real Gemini if available, else mock."""
     model_client = None
+    config = _load_config()
+    conf_cfg = (config.get("confidence_scoring") or {})
+    recovery_cfg = (config.get("error_recovery") or {})
     try:
         model_client = GoogleModelClient()
         logger.info("Successfully initialized GoogleModelClient with Gemini API")
@@ -82,6 +87,13 @@ def build_dialogue_manager():
         scheduling_agent=scheduling,
         records_agent=records,
         knowledge_agent=knowledge,
+        enable_confidence_scoring=conf_cfg.get("enabled", True),
+        confidence_threshold=conf_cfg.get("threshold", 0.7),
+        add_confidence_disclaimer=conf_cfg.get("add_disclaimer", True),
+        enable_error_recovery=recovery_cfg.get("enabled", True),
+        low_confidence_threshold=recovery_cfg.get("low_confidence_threshold", 0.6),
+        max_retry_attempts=recovery_cfg.get("max_retries", 2),
+        escalation_phone=recovery_cfg.get("escalation_phone", "(555) 0100"),
     )
 
 
@@ -238,6 +250,19 @@ def _extract_name_dob_with_nlu(text: str) -> Tuple[Optional[str], Optional[str]]
     return name, dob
 
 
+def _load_config() -> Dict[str, Any]:
+    """Load YAML config if present."""
+    config_path = Path("config/config.yaml")
+    if not config_path.exists():
+        return {}
+    try:
+        with open(config_path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to load config.yaml: %s", exc)
+        return {}
+
+
 def _extract_name_and_dob(text: str) -> Tuple[Optional[str], Optional[str]]:
     """Try regex extraction first, then fall back to LLM-based parsing."""
     name, dob = _extract_name_dob_regex(text)
@@ -378,10 +403,14 @@ def voice_handle():
         response_text=response_text,
         latency_ms=latency_ms,
         status=dm_result.status.value,
+        confidence_score=dm_result.metadata.get("confidence_score"),
+        error=dm_result.errors[0] if dm_result.errors else None,
         metadata={
             "auth_prompted": dm_result.metadata.get("auth_prompted", False),
-            "patient_id": new_state.patient_id if new_state.patient_id else None
-        }
+            "patient_id": new_state.patient_id if new_state.patient_id else None,
+            "flagged_for_review": dm_result.metadata.get("flagged_for_review", False),
+            "retry_count": getattr(new_state, "retry_count", None),
+        },
     )
 
     # Hang up if user says goodbye. If DM asked for auth (auth_prompted), keep the call open

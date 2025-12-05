@@ -108,6 +108,8 @@ class ConversationLogger:
         response_text: Optional[str] = None,
         latency_ms: Optional[float] = None,
         status: Optional[str] = None,
+        confidence_score: Optional[float] = None,
+        error: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """
@@ -139,6 +141,8 @@ class ConversationLogger:
             "response": self._sanitize_phi(response_text) if response_text else None,
             "latency_ms": latency_ms,
             "status": status,
+            "confidence_score": confidence_score,
+            "error": error,
             "metadata": metadata or {}
         }
 

@@ -2,10 +2,15 @@
 Dialogue Manager orchestrates conversation flow across agents.
 """
 
+import json
+import logging
 import os
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src.agents.base_agent import AgentResult, AgentStatus, BaseAgent
+from src.agents.confidence_scorer import ConfidenceScorer
 from src.utils.conversation_state import ConversationState
 from src.utils.response_generator import ResponseGenerator
 
@@ -20,6 +25,8 @@ INTENT_PATIENT_REQUIRED = {
     "InfoQuery",
 }
 
+logger = logging.getLogger(__name__)
+
 
 class DialogueManager(BaseAgent):
     """Central orchestrator for multi-turn conversations."""
@@ -31,6 +38,15 @@ class DialogueManager(BaseAgent):
         scheduling_agent,
         records_agent,
         knowledge_agent,
+        response_generator: Optional[ResponseGenerator] = None,
+        enable_confidence_scoring: bool = True,
+        confidence_threshold: float = 0.7,
+        add_confidence_disclaimer: bool = True,
+        enable_error_recovery: bool = True,
+        low_confidence_threshold: float = 0.6,
+        max_retry_attempts: int = 2,
+        escalation_phone: str = "(555) 0100",
+        session_id: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(model_client, **kwargs)
@@ -39,9 +55,20 @@ class DialogueManager(BaseAgent):
         self.records_agent = records_agent
         self.knowledge_agent = knowledge_agent
         # Response generator: used to create natural language slot offers and confirmations
-        self.response_generator: ResponseGenerator = kwargs.get(
-            "response_generator", ResponseGenerator(self.model)
+        self.response_generator: ResponseGenerator = response_generator or ResponseGenerator(self.model)
+        self.enable_confidence_scoring = enable_confidence_scoring
+        self.confidence_disclaimer = add_confidence_disclaimer
+        self.confidence_scorer = (
+            ConfidenceScorer(model_client=model_client, threshold=confidence_threshold)
+            if enable_confidence_scoring
+            else None
         )
+        self.flagged_responses: list = []
+        self.session_id = session_id
+        self.error_recovery_enabled = enable_error_recovery
+        self.low_confidence_threshold = low_confidence_threshold
+        self.max_retry_attempts = max_retry_attempts
+        self.escalation_phone = escalation_phone
 
     async def execute(self, input_data: Dict[str, Any]) -> AgentResult:
         """
@@ -59,7 +86,16 @@ class DialogueManager(BaseAgent):
         self._validate_input(input_data)
         utterance = input_data.get("utterance", "")
         state = self._coerce_state(input_data.get("state"))
+        session_id = input_data.get("session_id") or getattr(state, "session_id", None) or self.session_id
+        if session_id:
+            # Persist session_id onto the state for downstream consumers
+            try:
+                state.session_id = session_id  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        state.max_retries = self.max_retry_attempts
         state.add_turn("user", utterance)
+        turn_number = self._get_user_turn_number(state)
 
         # Resume authentication flow before re-classifying intent
         if state.step == "awaiting_auth":
@@ -72,6 +108,26 @@ class DialogueManager(BaseAgent):
         nlu_result = await self.nlu_agent.execute({"utterance": utterance, "context": state.to_dict()})
         intent = nlu_result.output.get("intent", "Other")
         state.set_intent(intent)
+        nlu_confidence = nlu_result.output.get("confidence", 1.0)
+
+        if self.error_recovery_enabled and nlu_confidence < self.low_confidence_threshold:
+            fallback_text = await self.handle_nlu_failure(
+                user_utterance=utterance,
+                nlu_result=nlu_result.output,
+                confidence=nlu_confidence,
+                state=state,
+            )
+            state.add_turn("assistant", fallback_text)
+            return AgentResult(
+                status=AgentStatus.PARTIAL,
+                output={"text": fallback_text, "state": state.to_dict()},
+                metadata={
+                    "nlu_confidence": nlu_confidence,
+                    "fallback_level": state.retry_count,
+                    "intent": intent,
+                },
+                warnings=["NLU_LOW_CONFIDENCE"],
+            )
 
         # CHECK REGISTRATION FLOW
         if state.step and state.step.startswith("registration_"):
@@ -102,7 +158,51 @@ class DialogueManager(BaseAgent):
                 return auth_result
 
         routed_result = await self._route_intent(intent, utterance, state, input_data)
-        state.add_turn("assistant", routed_result.output.get("text", ""))
+        if self.error_recovery_enabled:
+            self.check_and_reset_retry_on_success(nlu_confidence, state)
+        response_text = routed_result.output.get("text", "")
+        confidence_score: Optional[float] = None
+
+        # Run confidence scoring (non-blocking fallback when disabled)
+        if self.confidence_scorer and response_text:
+            try:
+                confidence_score = await self.confidence_scorer.score_response(
+                    user_query=utterance,
+                    agent_response=response_text,
+                    context={
+                        "intent": intent,
+                        "entities": nlu_result.output.get("entities", {}),
+                        "authenticated": state.patient_id is not None,
+                        "history": state.history[-3:],
+                    },
+                )
+                routed_result.metadata["confidence_score"] = confidence_score
+                routed_result.output["confidence_score"] = confidence_score
+                logger.info(f"Response confidence score: {confidence_score:.2f}")
+
+                if self.confidence_scorer.should_flag_for_review(confidence_score):
+                    flagged_item = self._flag_response_for_review(
+                        user_utterance=utterance,
+                        final_response=response_text,
+                        confidence_score=confidence_score,
+                        nlu_result=nlu_result.output,
+                        patient_id=state.patient_id,
+                        session_id=session_id,
+                        turn_number=turn_number,
+                    )
+                    routed_result.metadata["flagged_for_review"] = True
+                    if flagged_item:
+                        self.flagged_responses.append(flagged_item)
+                    if self.confidence_disclaimer:
+                        response_text = (
+                            f"{response_text}\n\n"
+                            "(Note: This response will be reviewed by our team to ensure accuracy.)"
+                        )
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning(f"Confidence scoring failed: {exc}")
+
+        routed_result.output["text"] = response_text
+        state.add_turn("assistant", response_text)
 
         return AgentResult(
             status=routed_result.status,
@@ -111,6 +211,150 @@ class DialogueManager(BaseAgent):
             errors=routed_result.errors,
             warnings=routed_result.warnings,
         )
+
+    @staticmethod
+    def _get_user_turn_number(state: ConversationState) -> int:
+        """Derive turn number from user messages in history."""
+        return sum(1 for turn in state.history if turn.get("role") == "user")
+
+    def _flag_response_for_review(
+        self,
+        user_utterance: str,
+        final_response: str,
+        confidence_score: float,
+        nlu_result: Dict[str, Any],
+        patient_id: Optional[str],
+        session_id: Optional[str],
+        turn_number: int,
+    ) -> Dict[str, Any]:
+        """Flag low-confidence response for human review and persist to log."""
+        flagged_item = {
+            "session_id": session_id or getattr(self, "session_id", None) or "session-unknown",
+            "turn": turn_number,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "user_query": user_utterance,
+            "agent_response": final_response,
+            "confidence_score": confidence_score,
+            "intent": nlu_result.get("intent", "Unknown"),
+            "entities": nlu_result.get("entities", {}),
+            "patient_id": patient_id,
+        }
+
+        self._write_flagged_to_log(flagged_item)
+        logger.warning(
+            "Response flagged for review (confidence=%.2f): %s",
+            confidence_score,
+            final_response[:120],
+        )
+
+        return flagged_item
+
+    def _write_flagged_to_log(self, flagged_item: Dict[str, Any]) -> None:
+        """Write flagged response to a persistent JSONL log."""
+        log_path = os.getenv("FLAGGED_RESPONSES_LOG", "runs/flagged_responses.jsonl")
+        log_file = Path(log_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file, "a") as f:
+            f.write(json.dumps(flagged_item) + "\n")
+
+    async def handle_nlu_failure(
+        self,
+        user_utterance: str,
+        nlu_result: Dict[str, Any],
+        confidence: float,
+        state: ConversationState,
+    ) -> str:
+        """
+        Graduated fallback strategy when NLU confidence is low.
+        """
+        state.increment_retry(failed_intent=nlu_result.get("intent", "Unknown"), utterance=user_utterance)
+        retry_count = state.retry_count
+
+        logger.warning(
+            "NLU failure detected (confidence=%.2f), retry_count=%s", confidence, retry_count
+        )
+
+        if retry_count == 1:
+            return await self.generate_clarification_question(user_utterance, nlu_result)
+
+        if retry_count == 2 and state.max_retries > 1:
+            return self.generate_menu_options()
+
+        if retry_count >= state.max_retries:
+            state.reset_retry()
+            return self.generate_human_escalation_message()
+
+        # Fallback menu when max_retries is set to 1 (still give one more attempt)
+        return self.generate_menu_options()
+
+    async def generate_clarification_question(
+        self,
+        user_utterance: str,
+        nlu_result: Dict[str, Any],
+    ) -> str:
+        """
+        Generate contextual clarification question using LLM (with safe fallback).
+        """
+        intent = nlu_result.get("intent", "Unknown")
+        entities = nlu_result.get("entities", {})
+        prompt = f"""
+You are a helpful healthcare assistant. The user said something unclear, and you need to politely ask for clarification.
+
+User said: "{user_utterance}"
+
+Our system detected intent '{intent}' with entities {entities}, but we're not confident.
+
+Generate a SHORT, friendly clarification question (1-2 sentences) to understand what they need.
+"""
+        try:
+            clarification = await self.model.generate(prompt=prompt, temperature=0.7, max_tokens=120)
+            text = clarification.content.strip()
+            if text:
+                return text
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.warning("Clarification generation failed: %s", exc)
+
+        return (
+            "I want to be sure I help with the right thing. "
+            "Could you share a bit more about what you need help with?"
+        )
+
+    def generate_menu_options(self) -> str:
+        """
+        Offer explicit menu of common actions.
+        """
+        menu = (
+            "I want to make sure I help you with the right thing. Here's what I can assist with:\n\n"
+            "1. Schedule a new appointment\n"
+            "2. Reschedule an existing appointment\n"
+            "3. Cancel an appointment\n"
+            "4. Check lab results or medications\n"
+            "5. Get clinic information (hours, location, insurance)\n"
+            "6. Speak with a staff member\n\n"
+            "Please tell me the number or describe what you need."
+        )
+
+        logger.info("Offered menu options to user")
+        return menu
+
+    def generate_human_escalation_message(self) -> str:
+        """
+        Escalate to human assistance after retries are exhausted.
+        """
+        message = (
+            "I apologize, but I'm having trouble understanding your request. "
+            "Let me connect you with a team member who can better assist you. "
+            f"Please call our main line at {self.escalation_phone}, or stay on the line and "
+            "someone will be with you shortly."
+        )
+
+        logger.warning("Escalated to human assistance after max retries")
+        return message
+
+    def check_and_reset_retry_on_success(self, confidence: float, state: ConversationState) -> None:
+        """Reset retry counter when NLU succeeds with high confidence."""
+        if confidence >= self.low_confidence_threshold and state.retry_count > 0:
+            state.reset_retry()
 
     def _authenticate_patient(self, state: ConversationState, input_data: Dict[str, Any]) -> Optional[AgentResult]:
         """Authenticate patient. In DEMO_MODE, use first patient as fallback for easier testing."""

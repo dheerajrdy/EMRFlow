@@ -39,6 +39,7 @@ class NLUAgent(BaseAgent):
                         "patient_name": {"type": "string"},
                     },
                 },
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             },
             "required": ["intent"],
         }
@@ -56,11 +57,16 @@ class NLUAgent(BaseAgent):
         except Exception:
             structured = self._fallback_rules(utterance)
 
+        confidence = structured.get("confidence")
+        if confidence is None:
+            confidence = self._estimate_confidence(structured.get("intent"), utterance)
+
         return self._create_success_result(
             {
                 "intent": structured.get("intent", "Other"),
                 "entities": structured.get("entities", {}),
                 "raw": structured,
+                "confidence": confidence,
             }
         )
 
@@ -107,16 +113,31 @@ class NLUAgent(BaseAgent):
         lower = utterance.lower()
         # Check for registration intent FIRST (most specific)
         if any(word in lower for word in ["new patient", "register", "sign up", "first time"]):
-            return {"intent": "RegisterNewPatient", "entities": {}}
+            return {"intent": "RegisterNewPatient", "entities": {}, "confidence": 0.8}
         # Check more specific intents before general "appointment"
         if "cancel" in lower:
-            return {"intent": "CancelAppointment", "entities": {}}
+            return {"intent": "CancelAppointment", "entities": {}, "confidence": 0.85}
         if "reschedule" in lower or "move" in lower:
-            return {"intent": "RescheduleAppointment", "entities": {}}
+            return {"intent": "RescheduleAppointment", "entities": {}, "confidence": 0.8}
         if any(word in lower for word in ["book", "schedule", "appointment"]):
-            return {"intent": "ScheduleAppointment", "entities": {}}
+            return {"intent": "ScheduleAppointment", "entities": {}, "confidence": 0.8}
         if any(word in lower for word in ["lab", "result", "medication", "test"]):
-            return {"intent": "InfoQuery", "entities": {}}
+            return {"intent": "InfoQuery", "entities": {}, "confidence": 0.75}
         if any(word in lower for word in ["hours", "location", "insurance", "faq"]):
-            return {"intent": "FAQ", "entities": {}}
-        return {"intent": "Other", "entities": {}}
+            return {"intent": "FAQ", "entities": {}, "confidence": 0.7}
+        return {"intent": "Other", "entities": {}, "confidence": 0.4}
+
+    @staticmethod
+    def _estimate_confidence(intent: Optional[str], utterance: str) -> float:
+        """Lightweight heuristic confidence when model does not supply one."""
+        if not utterance or not utterance.strip():
+            return 0.2
+        if intent in ("Other", None):
+            return 0.5
+        # Simple heuristic: longer, specific utterances yield higher confidence
+        word_count = len(utterance.split())
+        if word_count > 10:
+            return 0.8
+        if word_count > 5:
+            return 0.7
+        return 0.6

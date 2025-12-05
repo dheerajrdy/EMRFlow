@@ -49,6 +49,28 @@ storage:
   path: "runs"
   retention_days: 90
 
+# Confidence Scoring Configuration
+confidence_scoring:
+  enabled: true
+  threshold: 0.7
+  model: "gemini-2.5-flash"
+  temperature: 0.1
+  add_disclaimer: true
+
+# Error Recovery Configuration
+error_recovery:
+  enabled: true
+  max_retries: 2
+  low_confidence_threshold: 0.6
+  escalation_phone: "(555) 0100"
+
+# Metrics Configuration
+metrics:
+  enabled: true
+  log_latency: true
+  log_confidence: true
+  default_time_window_days: 7
+
 # Agent-specific Configuration
 agents:
   # [To be defined based on agents needed]
